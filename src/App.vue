@@ -6,7 +6,7 @@ import EndingCard from './components/EndingCard.vue'
 import { ROUTE } from '@route'
 import {
   routeIndex, goToRoute, msUntilUnlock, ignoreTimeLock, resetProgress, isDebug, now, hasFlag, setFlag,
-  addEnding, endingIds, unmarkSeen, isSeen, clearFlag,
+  addEnding, endingIds, unmarkSeen, isSeen, clearFlag, restartGame,
 } from './composables/useProgress.js'
 
 // 流程：轉場畫面（下一站）→ 按「出發」→ 場景 → 走到出口 → 下一區的轉場畫面……
@@ -87,6 +87,16 @@ function jumpTo(i) {
   showCard.value = true
 }
 
+// ---------- 重新開始（每個畫面右上角都有） ----------
+const askRestart = ref(false)
+function confirmRestart() {
+  askRestart.value = false
+  restartGame()
+  routeEnding.value = null
+  showCard.value = true
+  sceneKey.value++
+}
+
 function restart() {
   resetProgress()
   routeEnding.value = null
@@ -101,6 +111,17 @@ function fmtNow() {
 
 <template>
   <main class="page">
+    <button class="restart-btn" @click="askRestart = true">↺ 重新開始</button>
+    <div v-if="askRestart" class="confirm" @click.self="askRestart = false">
+      <div class="confirm-box">
+        <p class="confirm-title">要重新開始嗎？</p>
+        <p class="confirm-note">會回到第一關，目前的進度都會清掉。</p>
+        <div class="confirm-row">
+          <button class="confirm-no" @click="askRestart = false">取消</button>
+          <button class="confirm-yes" @click="confirmRestart">重新開始</button>
+        </div>
+      </div>
+    </div>
     <EndingCard
       v-if="routeEnding"
       :ending="routeEnding"
@@ -152,7 +173,19 @@ function fmtNow() {
 </template>
 
 <style scoped>
-.page { max-width: 480px; margin: 0 auto; padding: 10px 12px 12px; }
+.page { position: relative; max-width: 480px; margin: 0 auto; padding: 10px 12px 12px; }
+.restart-btn {
+  position: absolute; top: 10px; right: 12px; z-index: 5; font: inherit; font-size: 12px; padding: 3px 8px;
+  background: transparent; color: #a8b0d8; border: 1px solid #4a5280; border-radius: 4px; cursor: pointer;
+}
+.confirm { position: fixed; inset: 0; z-index: 50; background: rgba(10, 12, 28, 0.7); display: grid; place-items: center; padding: 24px; }
+.confirm-box { width: min(300px, 100%); background: #f3efe8; color: #1b2140; border: 4px solid #1b2140; box-shadow: 0 0 0 3px #f3efe8; padding: 18px 16px; text-align: center; }
+.confirm-title { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+.confirm-note { font-size: 14px; margin-bottom: 16px; opacity: 0.8; }
+.confirm-row { display: flex; gap: 10px; justify-content: center; }
+.confirm-row button { font: inherit; font-size: 15px; padding: 8px 16px; cursor: pointer; border: 3px solid #1b2140; }
+.confirm-no { background: #f3efe8; color: #1b2140; }
+.confirm-yes { background: #c23b4a; color: #f3efe8; border-color: #8e1a2a !important; }
 .admin { margin-top: 24px; padding: 12px; border: 2px dashed #ff6f91; font-size: 13px; display: grid; gap: 8px; }
 .row { display: flex; flex-wrap: wrap; gap: 6px; }
 .admin button { font: inherit; padding: 6px 8px; background: transparent; color: inherit; border: 1px solid currentColor; cursor: pointer; }

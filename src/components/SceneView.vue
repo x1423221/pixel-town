@@ -725,11 +725,11 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.console { max-width: 420px; margin: 0 auto; user-select: none; -webkit-user-select: none; }
+.console { max-width: 420px; margin: 0 auto; user-select: none; -webkit-user-select: none; touch-action: none; } /* 在遊戲上滑手指不會捲動頁面 */
 .title { font-size: 16px; text-align: center; letter-spacing: 2px; margin-bottom: 8px; }
 .screen {
-  /* 畫面寬度依螢幕高度縮小，讓下面的按鈕一定看得到（扣掉標題、按鈕、上下留白約 190px） */
-  width: min(100%, calc((100vh - 190px) * 192 / 264)); width: min(100%, calc((100dvh - 190px) * 192 / 264)); margin: 0 auto;
+  /* 畫面寬度依螢幕高度縮小，讓下面的按鈕一定看得到（扣掉標題、按鈕、上下留白約 225px） */
+  width: min(100%, calc((100vh - 225px) * 192 / 264)); width: min(100%, calc((100dvh - 225px) * 192 / 264)); margin: 0 auto;
   position: relative; border: 4px solid #f3efe8; background: #000; touch-action: none; overflow: hidden; }
 .game { display: block; width: 100%; aspect-ratio: 192 / 264; image-rendering: pixelated; }
 /* 對話框固定在畫面上方：主角走在下面的路上，不會被擋住 */

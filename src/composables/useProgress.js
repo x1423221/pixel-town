@@ -121,6 +121,12 @@ export function setFortune(rank) {
   save()
 }
 
+// 重新開始：回到第一區、全部重來，只保留收集到的結局和抽籤次數
+export function restartGame() {
+  Object.assign(state, { ...defaults(), endings: state.endings, draws: state.draws })
+  save()
+}
+
 // 再玩一次：從神社重新開始，保留收集到的結局和抽籤次數、已經看過的開場白
 export function resetForReplay(routeIndex) {
   const keepSeen = Object.fromEntries(Object.entries(state.seen).filter(([k]) => k.endsWith(':intro')))
