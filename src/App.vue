@@ -152,7 +152,7 @@ function fmtNow() {
 </template>
 
 <style scoped>
-.page { max-width: 480px; margin: 0 auto; padding: 20px 12px 32px; }
+.page { max-width: 480px; margin: 0 auto; padding: 10px 12px 12px; }
 .admin { margin-top: 24px; padding: 12px; border: 2px dashed #ff6f91; font-size: 13px; display: grid; gap: 8px; }
 .row { display: flex; flex-wrap: wrap; gap: 6px; }
 .admin button { font: inherit; padding: 6px 8px; background: transparent; color: inherit; border: 1px solid currentColor; cursor: pointer; }

@@ -41,7 +41,7 @@ function up(e, dir) {
 <style scoped>
 .pad {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 10px 24px 4px; touch-action: none; user-select: none; -webkit-user-select: none;
+  padding: 8px 24px 4px; touch-action: none; user-select: none; -webkit-user-select: none;
 }
 .dpad { position: relative; width: 105px; height: 105px; }
 .key, .center {

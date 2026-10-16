@@ -62,7 +62,7 @@ const openTime = computed(() =>
     <h1 class="title" @click="emit('title-tap')">{{ GAME_TITLE }}</h1>
     <canvas ref="canvas" :width="W" :height="H" class="train" />
 
-    <p class="label">下一站</p>
+    <p class="label">{{ entry.label ?? '下一站' }}</p>
     <p class="place">{{ entry.title }}</p>
 
     <template v-if="mode === 'next'">

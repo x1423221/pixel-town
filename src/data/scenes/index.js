@@ -11,6 +11,7 @@ import sea from './sea.js'
 // 遊戲名稱（標題列、瀏覽器分頁都會顯示）；存檔的名字
 export const GAME_TITLE = '東京任務'
 export const STORAGE_KEY = 'tokyo-mission-progress-v2'
+export const QUIZ_LABEL = '回憶題' // 答題框上的標籤
 
 export const ROUTE = [
   { id: 'ueno', title: '阿美橫町', unlockAt: '2026-12-04T06:30:00+09:00', scene: ueno },
