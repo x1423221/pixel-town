@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 //   npm run build:demo   → 試玩版（像素小鎮），輸出到 dist-demo/
 //   試玩版只會打包小鎮的內容，東京、回憶、求婚的資料完全不會出現在試玩版的檔案裡
 export default defineConfig(({ mode }) => ({
+  base: './', // 用相對路徑，放在 GitHub Pages 的子資料夾（/test_town/）也能正常讀到檔案
   plugins: [vue()],
   resolve: {
     alias: {
