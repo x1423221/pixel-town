@@ -31,7 +31,6 @@ function up(e, dir) {
       >
         <span class="arrow" />
       </button>
-      <span class="center" />
     </div>
 
     <button class="a" aria-label="A" @pointerdown.prevent="emit('a')" @contextmenu.prevent>A</button>
@@ -41,27 +40,28 @@ function up(e, dir) {
 <style scoped>
 .pad {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 8px 24px 4px; touch-action: none; user-select: none; -webkit-user-select: none;
+  padding: 8px 14px 4px; touch-action: none; user-select: none; -webkit-user-select: none;
 }
-.dpad { position: relative; width: 138px; height: 138px; } /* 十字鍵：每格 46px */
-.key, .center {
-  position: absolute; width: 46px; height: 46px; background: #2b2f4a; border: none;
+/* 十字鍵：每顆 54px，彼此之間空 8px，比較不會誤按 */
+.dpad { position: relative; width: 178px; height: 178px; }
+.key {
+  position: absolute; width: 54px; height: 54px; padding: 0; border: none; border-radius: 10px;
+  background: #2b2f4a; box-shadow: 0 3px 0 #161a30; cursor: pointer; touch-action: none;
+  display: grid; place-items: center;
 }
-.key { cursor: pointer; padding: 0; touch-action: none; }
-.key:active { background: #3e4468; }
-.up { left: 46px; top: 0; border-radius: 6px 6px 0 0; }
-.down { left: 46px; bottom: 0; border-radius: 0 0 6px 6px; }
-.left { left: 0; top: 46px; border-radius: 6px 0 0 6px; }
-.right { right: 0; top: 46px; border-radius: 0 6px 6px 0; }
-.center { left: 46px; top: 46px; }
-.arrow { display: block; width: 0; height: 0; margin: auto; border: 9px solid transparent; }
-.up .arrow { border-bottom-color: #8a90b0; margin-top: 7px; }
-.down .arrow { border-top-color: #8a90b0; margin-top: 21px; }
-.left .arrow { border-right-color: #8a90b0; margin-left: 7px; }
-.right .arrow { border-left-color: #8a90b0; margin-left: 21px; }
+.key:active { background: #3e4468; transform: translateY(2px); box-shadow: 0 1px 0 #161a30; }
+.up { left: 62px; top: 0; }
+.down { left: 62px; bottom: 0; }
+.left { left: 0; top: 62px; }
+.right { right: 0; top: 62px; }
+.arrow { display: block; width: 0; height: 0; border: 10px solid transparent; }
+.up .arrow { border-bottom-color: #a8aed0; transform: translateY(-5px); }
+.down .arrow { border-top-color: #a8aed0; transform: translateY(5px); }
+.left .arrow { border-right-color: #a8aed0; transform: translateX(-5px); }
+.right .arrow { border-left-color: #a8aed0; transform: translateX(5px); }
 .a {
-  width: 66px; height: 66px; border-radius: 50%; border: none; cursor: pointer;
-  background: #c23b4a; color: #f3efe8; font: inherit; font-size: 20px; font-weight: 700;
+  width: 74px; height: 74px; border-radius: 50%; border: none; cursor: pointer;
+  background: #c23b4a; color: #f3efe8; font: inherit; font-size: 22px; font-weight: 700;
   box-shadow: 0 4px 0 #8e1a2a; touch-action: none;
 }
 .a:active { transform: translateY(3px); box-shadow: 0 1px 0 #8e1a2a; }
