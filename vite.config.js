@@ -2,17 +2,13 @@ import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vite'
 import { fileURLToPath } from 'node:url'
 
-// 兩個版本共用同一份程式，只差在讀哪一份路線：
-//   npm run build        → 正式版（東京），輸出到 dist/
-//   npm run build:demo   → 試玩版（像素小鎮），輸出到 dist-demo/
-//   試玩版只會打包小鎮的內容，東京、回憶、求婚的資料完全不會出現在試玩版的檔案裡
-export default defineConfig(({ mode }) => ({
-  base: './', // 用相對路徑，放在 GitHub Pages 的子資料夾（/test_town/）也能正常讀到檔案
+// npm run dev     在電腦上開來玩
+// npm run build   打包到 dist/
+// （試玩版已經搬到另一個儲存庫 test_town，這裡只放正式版）
+export default defineConfig({
+  base: './', // 用相對路徑，放在子資料夾也能正常讀到檔案
   plugins: [vue()],
   resolve: {
-    alias: {
-      '@route': fileURLToPath(new URL(mode === 'demo' ? './src/data/demo/route.js' : './src/data/scenes/index.js', import.meta.url)),
-    },
+    alias: { '@route': fileURLToPath(new URL('./src/data/scenes/index.js', import.meta.url)) },
   },
-  build: { outDir: mode === 'demo' ? 'dist-demo' : 'dist' },
-}))
+})
