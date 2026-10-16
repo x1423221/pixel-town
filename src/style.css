@@ -1,0 +1,9 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: "Noto Sans TC", system-ui, sans-serif;
+  background: #1b2140;
+  color: #f3efe8;
+  -webkit-tap-highlight-color: transparent;
+}
+#app { min-height: 100%; }
