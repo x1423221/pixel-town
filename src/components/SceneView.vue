@@ -763,13 +763,13 @@ function render() {
     ctx.fillRect(0, 0, VIEW_W, VIEW_H)
   }
   theme.lights?.(ctx, scene, clock, camX, VIEW_W)
-  // 放大鏡：還沒查過的人／物件都會標出來（遠的淡一點，走到旁邊才亮起來可以點）
+  // 放大鏡：可以對話的人／物件都會標出來（遠的淡一點，走到旁邊才亮起來可以點；對話過也一樣）
   //   畫在夜色上面，晚上也看得清楚
   magnifierBoxes.length = 0
   if (!busy()) {
     const bob = Math.round(Math.sin(clock / 180) * 2)
     actors.forEach((a) => {
-      if (!talkable(a) || isSeen(key(a.id))) return
+      if (!talkable(a)) return
       const mx = Math.round(a.x) + 6 - camX
       if (mx < -14 || mx > VIEW_W) return
       const near = inReach(a)

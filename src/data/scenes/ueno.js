@@ -234,7 +234,7 @@ export default {
       id: 'grandma',
       sprite: 'npc',
       colors: { hair: '#c8c8d0', coat: '#7a5a3a' },
-      x: 4, lane: 4,
+      x: 4, lane: 4, walk: { from: 2, to: 25 }, // 在整條街慢慢逛
       name: '老奶奶',
       lines: ['我年輕的時候就常來這裡買東西了。', '買完東西，我等一下要去小網神社拜拜。', '那間神社被大樓包圍著，小小的，可是很靈驗喔。'],
       setFlag: 'heardDirection', // 聽到小網神社，才能從上野站出發
