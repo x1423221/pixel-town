@@ -1,20 +1,29 @@
 // 小網神社：早上的藍天、後面的辦公大樓、白牆＋神社樹林、授與所、鳥居、正殿
 //   0-3 天空＋大樓   4 樹林   5-6 白牆／授與所   7-10 碎石＋石板參道
 import { TILE, px, hash } from '../sceneArt.js'
-import { laneY, ground, gateGeom, pasteAlongBeam, offscreen, bandedSky } from '../stage.js'
+import { laneY, ground, gateGeom, pasteAlongBeam, offscreen, stars } from '../stage.js'
+import { light, mix, skyBands, nightAlpha, glow } from '../daylight.js'
 
 const BOOTH_FEET = 7 * TILE - 9 // 授與所裡巫女的腳底
 
 // ---------- 天空、雲、遠方辦公大樓 ----------
 function sky(ctx, camX, viewW) {
-  bandedSky(ctx, viewW, [[22, '#7cbde8'], [22, '#8ec8ec'], [22, '#a2d4f2'], [30, '#b8e0f6']])
-  // 雲（很慢）
+  const d = light.dark
+  skyBands(ctx, viewW, 4 * TILE, 6)
+  if (nightAlpha() > 0) { ctx.globalAlpha = nightAlpha(); stars(ctx, camX, viewW, 50, '#4a5490'); ctx.globalAlpha = 1 }
+  // 雲（很慢；天黑後變暗）
+  const cloud = mix('#ffffff', '#3a4068', d), cloudShade = mix('#e4f2fa', '#2e3458', d)
   for (let i = 0; i < 5; i++) {
     const cx = ((Math.floor(hash(i, 2) * 500) - camX * 0.08) % (viewW + 60) + viewW + 60) % (viewW + 60) - 30
     const cy = 10 + Math.floor(hash(i, 4) * 30)
-    px(ctx, cx, cy, 22, 4, '#ffffff'); px(ctx, cx + 4, cy - 3, 12, 3, '#ffffff'); px(ctx, cx + 2, cy + 4, 18, 1, '#e4f2fa')
+    px(ctx, cx, cy, 22, 4, cloud); px(ctx, cx + 4, cy - 3, 12, 3, cloud); px(ctx, cx + 2, cy + 4, 18, 1, cloudShade)
   }
-  // 辦公大樓（視差）
+  offices(ctx, camX, viewW, false)
+}
+
+// 辦公大樓（視差）：lit = true 只畫天黑後亮著的窗戶
+function offices(ctx, camX, viewW, lit) {
+  const d = light.dark
   const offset = camX * 0.4
   const start = Math.floor(offset / 18) - 1
   for (let i = start; i < start + viewW / 18 + 3; i++) {
@@ -22,12 +31,38 @@ function sky(ctx, camX, viewW) {
     const x = i * 18 - offset
     const top = 4 * TILE - h
     const glass = hash(i, 2) > 0.5
-    px(ctx, x, top, 17, h, glass ? '#7a9ab8' : '#a8a8b0')
-    px(ctx, x, top, 17, 2, glass ? '#9ab8d0' : '#c4c4cc')
+    if (!lit) {
+      px(ctx, x, top, 17, h, mix(glass ? '#7a9ab8' : '#a8a8b0', glass ? '#1e2848' : '#262838', d))
+      px(ctx, x, top, 17, 2, mix(glass ? '#9ab8d0' : '#c4c4cc', '#30344e', d))
+    }
     for (let wy = top + 5; wy < 4 * TILE - 2; wy += 5) {
-      for (let wx = 2; wx < 15; wx += 4) px(ctx, x + wx, wy, 2, 2, glass ? '#c8e0f0' : '#7a8a9c')
+      for (let wx = 2; wx < 15; wx += 4) {
+        const on = hash(i * 7 + wx, wy) > 0.55
+        if (lit) { if (on) px(ctx, x + wx, wy, 2, 2, '#ffd98a'); continue }
+        px(ctx, x + wx, wy, 2, 2, mix(glass ? '#c8e0f0' : '#7a8a9c', '#2a3048', d))
+      }
     }
   }
+}
+
+// 天黑後：大樓的窗戶、石燈籠亮起來
+function lights(ctx, scene, clock, camX, viewW) {
+  const a = nightAlpha()
+  if (a <= 0) return
+  ctx.globalAlpha = a
+  offices(ctx, camX, viewW, true)
+  ctx.globalAlpha = 1
+  ctx.save()
+  ctx.translate(-camX, 0)
+  ;[...scene.stalls].forEach((ch, tx) => {
+    if (ch !== 'L') return
+    const bx = tx * TILE + 6, top = 5 * TILE + 8
+    ctx.globalAlpha = a
+    px(ctx, bx + 4, top + 8, 4, 4, '#ffd88a')
+    ctx.globalAlpha = 1
+    glow(ctx, bx + 6, top + 10, 14)
+  })
+  ctx.restore()
 }
 
 // ---------- 後層 ----------
@@ -198,4 +233,4 @@ function overlay(ctx, scene) {
   pasteAlongBeam(ctx, g, toriiSprite(), TOP_BASE)
 }
 
-export default { sky, back, front, extras, obstacles, overlay, stallFeet: BOOTH_FEET }
+export default { sky, back, front, extras, obstacles, overlay, lights, stallFeet: BOOTH_FEET }

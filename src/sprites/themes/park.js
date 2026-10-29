@@ -1,17 +1,22 @@
 // 芝公園：傍晚的天空、遠方的鐵塔、黃色銀杏、草地、鐵塔入口
 //   0-4 夕陽天空＋鐵塔   3-6 銀杏樹＋草地＋路燈   7-10 碎石步道（有落葉）
 import { TILE, px, hash } from '../sceneArt.js'
-import { laneY, ground, bandedSky } from '../stage.js'
+import { laneY, ground, stars } from '../stage.js'
+import { light, mix, skyBands, nightAlpha, glow } from '../daylight.js'
 
 // ---------- 夕陽、遠方大樓剪影、鐵塔（視差） ----------
 function sky(ctx, camX, viewW, clock, scene) {
-  bandedSky(ctx, viewW, [[16, '#4a5aa0'], [16, '#6a6ab4'], [16, '#9a78b8'], [16, '#d488a8'], [16, '#f2a08a'], [16, '#f8c08a'], [24, '#fcd89a']])
-  // 遠方大樓剪影
+  skyBands(ctx, viewW, 5 * TILE, 8)
+  if (nightAlpha() > 0) { ctx.globalAlpha = nightAlpha(); stars(ctx, camX, viewW, 60, '#4a5490'); ctx.globalAlpha = 1 }
+  // 遠方大樓剪影（白天灰藍、傍晚帶紫、晚上暗）
+  const d = light.dark
+  const evening = light.hour > 15.5 && light.hour < 19 ? 1 - Math.abs(light.hour - 17.3) / 1.8 : 0
+  const bld = mix(mix('#8a96b4', '#7a5a8a', evening), '#262a48', d)
   const off = camX * 0.25
   for (let i = Math.floor(off / 12) - 1; i < off / 12 + viewW / 12 + 2; i++) {
     const h = 14 + Math.floor(hash(i, 3) * 26)
-    px(ctx, i * 12 - off, 5 * TILE - h, 11, h, '#7a5a8a')
-    if (hash(i, 5) > 0.6) px(ctx, i * 12 - off + 4, 5 * TILE - h + 4, 2, 2, '#ffd88a')
+    px(ctx, i * 12 - off, 5 * TILE - h, 11, h, bld)
+    if (hash(i, 5) > 0.6) px(ctx, i * 12 - off + 4, 5 * TILE - h + 4, 2, 2, d > 0.3 ? '#ffd88a' : mix('#c4d0e2', '#ffd88a', d * 3))
   }
   // 鐵塔：走到越右邊越靠近畫面中間
   if (!scene.tower) return // 沒有設定 tower 就不畫鐵塔（試玩版的小鎮）
@@ -107,4 +112,20 @@ function extras(ctx, scene, clock, worldW) {
   }
 }
 
-export default { sky, back, front, extras, obstacles: () => [], overlay: () => {}, stallFeet: 7 * TILE - 9 }
+// 天黑後：路燈亮起來
+function lights(ctx, scene, clock, camX) {
+  if (nightAlpha() <= 0) return
+  ctx.save()
+  ctx.translate(-camX, 0)
+  ;[...scene.stalls].forEach((ch, tx) => {
+    if (ch !== 'S') return
+    const X = tx * TILE
+    ctx.globalAlpha = nightAlpha()
+    px(ctx, X + 9, 4 * TILE - 6, 6, 5, '#ffe2a0')
+    ctx.globalAlpha = 1
+    glow(ctx, X + 12, 4 * TILE - 3, 22)
+  })
+  ctx.restore()
+}
+
+export default { sky, back, front, extras, lights, obstacles: () => [], overlay: () => {}, stallFeet: 7 * TILE - 9 }

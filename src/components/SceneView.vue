@@ -12,7 +12,8 @@ import {
 import { ROWS, LANES, laneY } from '../sprites/stage.js'
 import { THEMES } from '../sprites/themes/index.js'
 import { createFireworks } from '../sprites/fireworks.js'
-import { isSeen, markSeen, hasFlag, setFlag, clearFlag, hasItem, addItem, itemIds, msUntil, drawCount, addDraw, fortune, setFortune, endingIds } from '../composables/useProgress.js'
+import { light, updateLight } from '../sprites/daylight.js'
+import { now, isSeen, markSeen, hasFlag, setFlag, clearFlag, hasItem, addItem, itemIds, msUntil, drawCount, addDraw, fortune, setFortune, endingIds } from '../composables/useProgress.js'
 
 const props = defineProps({ scene: { type: Object, required: true } })
 const emit = defineEmits(['title-tap', 'exit', 'finale-done', 'route-ending'])
@@ -539,9 +540,9 @@ function render() {
   camX = Math.round(Math.max(0, Math.min(centerX(player) - VIEW_W / 2, worldW - VIEW_W)))
   const x0 = Math.floor(camX / TILE), x1 = Math.min(Math.ceil((camX + VIEW_W) / TILE), scene.width)
 
-  // 天空 → 煙火 → 遠景（畫面座標）
+  // 天空 → 遠景（畫面座標）；天色跟著日本時間
+  updateLight(now.value)
   theme.sky(ctx, camX, VIEW_W, clock, scene)
-  fireworks.draw(ctx)
   theme.far?.(ctx, camX, VIEW_W, clock, scene)
 
   ctx.save()
@@ -588,6 +589,18 @@ function render() {
       magnifierBoxes.push({ x: mx - camX, y: my, actor: a })
     })
   }
+  ctx.restore()
+
+  // 天黑：整個畫面蓋一層深藍，再把會發光的東西（路燈、窗戶、彩燈）畫回來
+  if (light.dark > 0) {
+    ctx.fillStyle = `rgba(12, 16, 46, ${0.5 * light.dark})`
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H)
+  }
+  theme.lights?.(ctx, scene, clock, camX, VIEW_W)
+  // 煙火畫在最上層（才不會被夜色蓋暗），只出現在天空那一塊
+  ctx.save()
+  ctx.beginPath(); ctx.rect(0, 0, VIEW_W, 3 * TILE); ctx.clip()
+  fireworks.draw(ctx)
   ctx.restore()
 
   // 右上角的道具欄（最終章等煙火、放煙火時先藏起來）

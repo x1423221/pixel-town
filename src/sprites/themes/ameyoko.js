@@ -3,23 +3,32 @@
 //   4-5 高架下的店       6 攤位檯子           7-10 路面
 import { TILE, drawTile, px, hash, drawText, stallTable, drawTrain, TRAIN_LENGTH } from '../sceneArt.js'
 import { laneY, ground, gateGeom, pasteAlongBeam, offscreen, stars } from '../stage.js'
+import { light, mix, skyBands, nightAlpha, glow } from '../daylight.js'
 
 const STALL_FEET = 7 * TILE - 9 // 攤位裡的人腳底（下半身被櫃檯擋住）
 
-// ---------- 夜空與遠方大樓（視差：捲動比較慢） ----------
+// ---------- 天空與遠方大樓（視差：捲動比較慢）；天色跟著日本時間變 ----------
 function sky(ctx, camX, viewW) {
-  px(ctx, 0, 0, viewW, 3 * TILE, '#141a33')
-  stars(ctx, camX, viewW, 40, '#4a5490')
+  skyBands(ctx, viewW, 3 * TILE, 6)
+  if (nightAlpha() > 0) { ctx.globalAlpha = nightAlpha(); stars(ctx, camX, viewW, 40, '#4a5490'); ctx.globalAlpha = 1 }
+  skyline(ctx, camX, viewW, false)
+}
+
+// 遠方大樓：lit = false 畫大樓本身；lit = true 只畫亮著的窗戶和霓虹（天黑後疊在最上面）
+function skyline(ctx, camX, viewW, lit) {
   const offset = camX * 0.4
   const start = Math.floor(offset / 14) - 1
+  const d = light.dark
   for (let i = start; i < start + viewW / 14 + 3; i++) {
     const h = 26 + Math.floor(hash(i, 1) * 34)
     const x = i * 14 - offset
     const top = 3 * TILE - h
-    px(ctx, x, top, 13, h, hash(i, 2) > 0.5 ? '#232a4a' : '#1e2442')
+    if (!lit) px(ctx, x, top, 13, h, hash(i, 2) > 0.5 ? mix('#8a92b2', '#232a4a', d) : mix('#9a9cb6', '#1e2442', d))
     for (let wy = top + 4; wy < 3 * TILE - 4; wy += 6) {
       for (let wx = 2; wx < 12; wx += 4) {
-        if (hash(i * 13 + wx, wy) > 0.72) px(ctx, x + wx, wy, 2, 2, '#c9a44a')
+        const on = hash(i * 13 + wx, wy) > 0.72
+        if (lit && on) px(ctx, x + wx, wy, 2, 2, '#c9a44a')
+        if (!lit) px(ctx, x + wx, wy, 2, 2, on && d > 0.5 ? '#c9a44a' : mix('#c4d0e2', '#2a3256', d))
       }
     }
     if (hash(i, 9) > 0.55) { // 直式霓虹招牌
@@ -30,6 +39,29 @@ function sky(ctx, camX, viewW) {
       for (let k = sy + 2; k < sy + sh - 1; k += 3) px(ctx, x + 10, k, 2, 1, '#fff6e0')
     }
   }
+}
+
+// 天黑後才畫：窗戶、霓虹重新亮起來
+function lights(ctx, scene, clock, camX, viewW) {
+  const a = nightAlpha()
+  if (a <= 0) return
+  ctx.globalAlpha = a
+  skyline(ctx, camX, viewW, true)
+  // 高架下的店、攤位上的燈泡串
+  ctx.save()
+  ctx.translate(-camX, 0)
+  const x0 = Math.floor(camX / TILE), x1 = Math.min(scene.width, Math.ceil((camX + viewW) / TILE))
+  for (let tx = x0; tx < x1; tx++) {
+    const X = tx * TILE
+    bulbString(ctx, X, 4 * TILE + 9, tx)
+    if (scene.stalls[tx] && scene.stalls[tx] !== ',') bulbString(ctx, X, 6 * TILE, tx + 1)
+  }
+  ctx.globalAlpha = 1
+  for (let tx = x0; tx < x1; tx++) {
+    glow(ctx, tx * TILE + 12, 4 * TILE + 10, 16, '255, 230, 160', 0.7)
+    if (scene.stalls[tx] && scene.stalls[tx] !== ',') glow(ctx, tx * TILE + 12, 6 * TILE + 2, 14, '255, 230, 160', 0.8)
+  }
+  ctx.restore()
 }
 
 // 一串燈泡
@@ -199,4 +231,4 @@ function overlay(ctx, scene) {
   pasteAlongBeam(ctx, g, sign(), SIGN_BASE)
 }
 
-export default { sky, back, front, extras, obstacles, overlay, stallFeet: STALL_FEET }
+export default { sky, back, front, extras, obstacles, overlay, lights, stallFeet: STALL_FEET }

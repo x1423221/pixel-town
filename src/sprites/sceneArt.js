@@ -106,9 +106,7 @@ export function drawTile(ctx, ch, tx, ty) {
   const r = hash(tx, ty)
 
   switch (ch) {
-    case 'V': { // 高架最上層：夜空 + 鐵軌橋面（電車另外畫在上面）
-      px(ctx, X, Y, TILE, TILE, COL.sky)
-      if (r > 0.6) px(ctx, X + Math.floor(r * 20), Y + 2, 1, 1, COL.skyStar)
+    case 'V': { // 高架最上層：鐵軌橋面（上面是透明的，看得到後面的天空和大樓；電車另外畫）
       px(ctx, X, Y + 19, TILE, 5, COL.concreteDark)
       px(ctx, X, Y + 19, TILE, 1, COL.concreteLight)
       px(ctx, X, Y + 21, TILE, 1, '#b8bece') // 鐵軌
