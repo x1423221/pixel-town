@@ -755,18 +755,6 @@ function render() {
 
   theme.overlay(ctx, scene) // 門的橫樑和招牌：在所有人上方
 
-  // 放大鏡：還沒查過、而且在範圍內的人
-  magnifierBoxes.length = 0
-  if (!busy()) {
-    const bob = Math.round(Math.sin(clock / 180) * 2)
-    actors.forEach((a) => {
-      if (!talkable(a) || isSeen(key(a.id)) || !inReach(a)) return
-      const mx = Math.round(a.x) + 6
-      const my = feetOf(a) - SPRITE_H - 15 + bob
-      ctx.drawImage(magnifierCanvas(), mx, my)
-      magnifierBoxes.push({ x: mx - camX, y: my, actor: a })
-    })
-  }
   ctx.restore()
 
   // 天黑：整個畫面蓋一層深藍，再把會發光的東西（路燈、窗戶、彩燈）畫回來
@@ -775,6 +763,23 @@ function render() {
     ctx.fillRect(0, 0, VIEW_W, VIEW_H)
   }
   theme.lights?.(ctx, scene, clock, camX, VIEW_W)
+  // 放大鏡：還沒查過的人／物件都會標出來（遠的淡一點，走到旁邊才亮起來可以點）
+  //   畫在夜色上面，晚上也看得清楚
+  magnifierBoxes.length = 0
+  if (!busy()) {
+    const bob = Math.round(Math.sin(clock / 180) * 2)
+    actors.forEach((a) => {
+      if (!talkable(a) || isSeen(key(a.id))) return
+      const mx = Math.round(a.x) + 6 - camX
+      if (mx < -14 || mx > VIEW_W) return
+      const near = inReach(a)
+      const my = feetOf(a) - SPRITE_H - 15 + (near ? bob : 0)
+      ctx.globalAlpha = near ? 1 : 0.7
+      ctx.drawImage(magnifierCanvas(), mx, my)
+      ctx.globalAlpha = 1
+      if (near) magnifierBoxes.push({ x: mx, y: my, actor: a })
+    })
+  }
   // 煙火畫在最上層（才不會被夜色蓋暗），只出現在天空那一塊
   ctx.save()
   ctx.beginPath(); ctx.rect(0, 0, VIEW_W, 3 * TILE); ctx.clip()
