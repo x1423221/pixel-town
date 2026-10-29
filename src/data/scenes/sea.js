@@ -18,8 +18,62 @@ export default {
 
   intro: [
     '海風好舒服……',
-    '「最後一片，在海的那一邊」……應該就是這裡了吧。',
     '找到第四片，就能知道寫信的人想說什麼了。',
+  ],
+
+  // 兩張似顏繪合在一起（點右上角的兩張畫）→ 播「還沒發生的回憶」→ 拿到碎片 4
+  merges: [
+    {
+      items: ['portrait-girl', 'portrait-boy'],
+      lines: ['（兩張畫放在一起的瞬間……）'],
+      // 未來的回憶（future: true 會變成淡紫色調、標籤寫「未來」）
+      //   cast 裡加 old: true 會變成白頭髮；shot 加 fireworks: true 會放煙火
+      flashback: {
+        title: '還沒發生的回憶',
+        future: true,
+        shots: [
+          {
+            bg: 'newhome',
+            caption: '以後的某一天',
+            cast: [{ who: 'boy', from: -24, x: 26, facing: 'right' }, { who: 'girl', x: 52, facing: 'left' }],
+            lines: [
+              '她：箱子也太多了吧！',
+              '他：……這箱怎麼寫著「牛奶糖」？',
+              '她：那是很重要的東西，不准拆！',
+              '（我們的第一個家。）',
+            ],
+          },
+          {
+            bg: 'living',
+            caption: '很普通的某個晚上',
+            cast: [{ who: 'boy', x: 40, facing: 'left' }, { who: 'girl', x: 60, facing: 'left' }],
+            lines: [
+              '（沒有什麼特別的事。）',
+              '她：欸，明天要吃什麼？',
+              '他：都好，跟妳一起吃就好。',
+              '（可是我最想要的，就是這樣的每一天。）',
+            ],
+          },
+          {
+            bg: 'harborOld',
+            caption: '很久很久以後',
+            fireworks: true,
+            cast: [{ who: 'boy', x: 26, facing: 'right', old: true }, { who: 'girl', x: 50, facing: 'left', old: true }],
+            lines: [
+              '她：煙火還是跟那天一樣漂亮呢。',
+              '他：妳也是。',
+              '（我想收藏的，還有這些還沒發生的回憶。）',
+            ],
+          },
+        ],
+      },
+      reward: {
+        id: 'portrait',
+        name: '兩個人的似顏繪',
+        note: '這是我們的第一張「全家福」。\n\n（他留的話：待填）',
+        fragment: { n: 4, of: 4, text: '我都想陪妳，一直收藏下去。' },
+      },
+    },
   ],
 
   objects: [
@@ -41,8 +95,7 @@ export default {
       name: '畫似顏繪的畫家',
       lines: [
         '要不要畫一張似顏繪呀？',
-        '……咦，紅色貝蕾帽？有位客人請我畫了一張畫，要送給戴紅色貝蕾帽的小姐。',
-        '他說，妳答對一個問題才能給妳。',
+        '畫之前，先回答我一個小問題吧！',
       ],
       quiz: {
         question: '（回憶題待填）例：我們第一張合照是在哪裡拍的？',
@@ -52,66 +105,36 @@ export default {
           '嗯……好像不是這裡喔。',
         ],
         successLines: [
-          '答對了！',
-          '這張畫給妳。',
-          '……其實，那位客人請我畫的不只這一張。',
-          '他說：「其他幾張，是還沒發生的回憶。」',
+          '答對了！那我開始畫囉～',
+          '（沙沙沙……）',
+          '畫好了！這張給妳。',
         ],
-
-        // 未來的回憶（future: true 會變成淡紫色調、標籤寫「未來」）
-        //   cast 裡加 old: true 會變成白頭髮；shot 加 fireworks: true 會放煙火
-        flashback: {
-          title: '還沒發生的回憶',
-          future: true,
-          shots: [
-            {
-              bg: 'newhome',
-              caption: '以後的某一天',
-              cast: [{ who: 'boy', from: -24, x: 26, facing: 'right' }, { who: 'girl', x: 52, facing: 'left' }],
-              lines: [
-                '她：箱子也太多了吧！',
-                '他：……這箱怎麼寫著「牛奶糖」？',
-                '她：那是很重要的東西，不准拆！',
-                '（我們的第一個家。）',
-              ],
-            },
-            {
-              bg: 'living',
-              caption: '很普通的某個晚上',
-              cast: [{ who: 'boy', x: 40, facing: 'left' }, { who: 'girl', x: 60, facing: 'left' }],
-              lines: [
-                '（沒有什麼特別的事。）',
-                '她：欸，明天要吃什麼？',
-                '他：都好，跟妳一起吃就好。',
-                '（可是我最想要的，就是這樣的每一天。）',
-              ],
-            },
-            {
-              bg: 'harborOld',
-              caption: '很久很久以後',
-              fireworks: true,
-              cast: [{ who: 'boy', x: 26, facing: 'right', old: true }, { who: 'girl', x: 50, facing: 'left', old: true }],
-              lines: [
-                '她：煙火還是跟那天一樣漂亮呢。',
-                '他：妳也是。',
-                '（我想收藏的，還有這些還沒發生的回憶。）',
-              ],
-            },
-          ],
-        },
         reward: {
-          id: 'portrait',
-          name: '兩個人的似顏繪',
-          note: '他說，這是你們的第一張「全家福」。\n\n（他留的話：待填）',
-          fragment: { n: 4, of: 4, text: '我都想陪妳，一直收藏下去。' },
+          id: 'portrait-girl',
+          name: '妳的似顏繪',
+          note: '畫得好像！',
         },
+      },
+      // 畫完她之後：問要不要幫旁邊的他也畫一張（說不要的話，之後再找畫家還會再問）
+      offer: {
+        lines: ['……旁邊這位先生，要不要也畫一張？'],
+        question: '要幫他也畫一張嗎？',
+        options: ['要', '不要'],
+        yesLines: ['好～請坐好喔！', '（沙沙沙……）', '畫好了！'],
+        noLines: ['好喔，想畫的時候再跟我說～'],
+        reward: {
+          id: 'portrait-boy',
+          name: '他的似顏繪',
+          note: '……表情好緊張。',
+        },
+        afterLines: ['兩張畫放在一起看看吧？', '（點右上角的兩張畫）'],
       },
       afterLines: ['今晚有煙火喔，碼頭那邊視野最好。'],
     },
     {
       id: 'grandpa', sprite: 'npc', colors: { hair: '#c8c8d0', coat: '#5a4a3a' }, x: 14, lane: 3,
       name: '老爺爺',
-      lines: ['我和太太年輕的時候，也在這樣的港口一起看過煙火。', '那天，我跟她求婚了。'],
+      lines: ['我和太太年輕的時候，也在這樣的港口一起看過煙火。'],
     },
     {
       id: 'grandma', sprite: 'npc', colors: { hair: '#d8d8e0', coat: '#9a6a7a' }, x: 15.1, lane: 3,
@@ -152,7 +175,6 @@ export default {
       '拼在一起，是一句話——',
       '「那盒妳捨不得吃的牛奶糖、每一次一起許下的願望、一起看過的每一片風景——」',
       '「我都想陪妳，一直收藏下去。」',
-      '……寫信的人想說的事，是什麼呢？',
     ],
     // 到了碼頭，一路陪著的他先離開一下（吉的話他會一直陪在旁邊，不會離開）
     leaveLines: ['欸，煙火還沒開始，我去買兩杯熱可可，馬上回來！', '妳在這裡等我喔，不要亂跑～'],

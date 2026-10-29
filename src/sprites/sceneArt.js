@@ -584,6 +584,19 @@ function makePortrait() {
   return buf
 }
 
+// 一個人的似顏繪（小畫框）：who 是 'girl' 或 'boy'
+function makeSinglePortrait(who) {
+  const { buf, r } = sheet(24, 30)
+  r(0, 0, 24, 30, who === 'girl' ? '#a85a6a' : '#5a6a8a'); r(2, 2, 20, 26, '#fbf3e0')
+  const b = who === 'girl' ? drawGirl('idle', 0) : drawBoy('idle', 0)
+  b.pixels.forEach((c, i) => {
+    if (!c) return
+    const x = i % b.w, y = Math.floor(i / b.w)
+    if (y % 2 === 0 && x % 2 === 0) r(6 + x / 2, 7 + y / 2, 1, 1, c)
+  })
+  return buf
+}
+
 // 小鎮的星星（試玩版的道具）
 function makeStar() {
   const { buf, r } = sheet(17, 17)
@@ -596,7 +609,7 @@ function makeStar() {
   return outline(buf)
 }
 
-const ITEMS = { star: makeStar, 'milk-candy': makeMilkCandy, fortune: makeFortune, 'fortune-plain': makeFortunePlain, tickets: makeTickets, portrait: makePortrait }
+const ITEMS = { star: makeStar, 'milk-candy': makeMilkCandy, fortune: makeFortune, 'fortune-plain': makeFortunePlain, tickets: makeTickets, portrait: makePortrait, 'portrait-girl': () => makeSinglePortrait('girl'), 'portrait-boy': () => makeSinglePortrait('boy') }
 
 export function itemCanvas(id) {
   return ITEMS[id] ? cached(`item-${id}`, ITEMS[id]) : null

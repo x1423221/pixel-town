@@ -99,6 +99,11 @@ export function addItem(id) {
   save()
 }
 
+export function removeItem(id) {
+  delete state.items[id]
+  save()
+}
+
 export const itemIds = computed(() => Object.keys(state.items))
 
 // ---------- 抽籤次數、收集到的結局 ----------

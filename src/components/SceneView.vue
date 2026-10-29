@@ -14,7 +14,7 @@ import { THEMES } from '../sprites/themes/index.js'
 import { createFireworks } from '../sprites/fireworks.js'
 import { light, updateLight } from '../sprites/daylight.js'
 import { isPresent, linesFor } from '../sprites/shopHours.js'
-import { now, isSeen, markSeen, hasFlag, setFlag, clearFlag, hasItem, addItem, itemIds, msUntil, drawCount, addDraw, fortune, setFortune, endingIds } from '../composables/useProgress.js'
+import { now, isSeen, markSeen, hasFlag, setFlag, clearFlag, hasItem, addItem, removeItem, itemIds, msUntil, drawCount, addDraw, fortune, setFortune, endingIds } from '../composables/useProgress.js'
 
 const props = defineProps({
   scene: { type: Object, required: true },
@@ -93,6 +93,7 @@ const dialog = reactive({ open: false, name: '', lines: [], index: 0, shown: 0, 
 let typeTimer = null
 
 function openDialog(name, lines, onClose = null) {
+  if (!lines?.length) return onClose?.()
   held.length = 0
   Object.assign(dialog, { open: true, name, lines, index: 0, shown: 0, onClose })
   typeLine()
@@ -131,7 +132,10 @@ let talkingTo = null
 function inspect(a) {
   talkingTo = a // 對話中這個人會停下來面向她
   if (a.quiz) {
-    if (isSeen(key(a.id))) return openDialog(a.name, a.afterLines || a.lines)
+    if (isSeen(key(a.id))) {
+      if (a.offer && !hasItem(a.offer.reward.id)) return makeOffer(a) // 之前說不要：再問一次
+      return openDialog(a.name, a.afterLines || a.lines)
+    }
     if (a.omikuji && isSeen(key(`${a.id}:quiz`))) { // 題目答對了、但還沒抽到大吉
       return openDialog(a.name, a.omikuji.againLines, () => openOmikuji(a))
     }
@@ -155,17 +159,22 @@ function tryExit() {
 
 // ---------- 前往下一個地方：先問，確認後黑圈縮到主角身上（像寶可夢換場景） ----------
 let exitDone = false
-const choice = reactive({ open: false, selected: 0 })
-const choiceOptions = ['前往', '再逛逛']
-function askNext() {
+// 選擇框（像寶可夢的是／否選單）：問題、選項、選了之後要做什麼
+const choice = reactive({ open: false, selected: 0, question: '', sub: '', options: [], onPick: null })
+function ask(question, options, onPick, sub = '') {
   held.length = 0
-  Object.assign(choice, { open: true, selected: 0 })
+  Object.assign(choice, { open: true, selected: 0, question, sub, options, onPick })
 }
 function pickChoice(i) {
   choice.open = false
-  if (i === 0) return irisOut(() => emit('exit', scene.id))
-  player.x -= 14 // 再逛逛：往回走一點，免得一直跳出來
-  player.facing = 'left'
+  choice.onPick?.(i)
+}
+function askNext() {
+  ask('要前往下一個地方嗎？', ['前往', '再逛逛'], (i) => {
+    if (i === 0) return irisOut(() => emit('exit', scene.id))
+    player.x -= 14 // 再逛逛：往回走一點，免得一直跳出來
+    player.facing = 'left'
+  }, props.nextTitle ? `下一站：${props.nextTitle}` : '')
 }
 
 const iris = reactive({ active: false, k: 1, cx: 50, cy: 70, maxR: 600 })
@@ -209,9 +218,15 @@ function choose(i) {
   const q = quiz.obj.quiz
   const obj = quiz.obj
   quiz.open = false
+  stopSongOverride()
+  if (i >= q.options.length) return // 等等再來：先離開，之後再回來答
   if (i !== q.answer) {
     const hint = q.hints[Math.min(quiz.wrong, q.hints.length - 1)]
     quiz.wrong++
+    if (q.optionSongs?.[i]) { // 選錯的歌：他就彈那一首給妳聽，聽聽看是不是
+      playSongOverride(q.optionSongs[i])
+      return openDialog(obj.name, q.wrongSongLines || [hint], () => openQuiz(obj))
+    }
     return openDialog(obj.name, [hint], () => openQuiz(obj))
   }
   quiz.wrong = 0
@@ -223,7 +238,21 @@ function choose(i) {
   if (obj.setFlag) setFlag(obj.setFlag)
   openDialog(obj.name, q.successLines, () => playFlashback(q.flashback, () => {
     if (q.reward && !hasItem(q.reward.id)) addItem(q.reward.id)
-    if (q.reward) showItem(q.reward)
+    if (q.reward) showItem(q.reward, () => makeOffer(obj))
+    else makeOffer(obj)
+  }))
+}
+
+// offer：答對之後的追加問題（例如：「旁邊這位先生要不要也畫一張？」），拒絕的話之後找他還會再問
+function makeOffer(obj) {
+  const o = obj.offer
+  if (!o || hasItem(o.reward.id)) return
+  openDialog(obj.name, o.lines || [], () => ask(o.question, o.options || ['要', '不要'], (i) => {
+    if (i !== 0) return openDialog(obj.name, o.noLines || [])
+    openDialog(obj.name, o.yesLines || [], () => {
+      addItem(o.reward.id)
+      showItem(o.reward, () => openDialog(obj.name, o.afterLines || []))
+    })
   }))
 }
 
@@ -418,11 +447,13 @@ const busy = () => iris.active || choice.open || flash.open || dialog.open || qu
 const held = []
 function press(dir) {
   if (choice.open) { // 要不要前往下一站：上下選
-    if (dir === 'up' || dir === 'down') choice.selected = 1 - choice.selected
+    const n = choice.options.length
+    if (dir === 'up') choice.selected = (choice.selected + n - 1) % n
+    if (dir === 'down') choice.selected = (choice.selected + 1) % n
     return
   }
-  if (quiz.open) { // 出題中：上下選答案
-    const n = quiz.obj.quiz.options.length
+  if (quiz.open) { // 出題中：上下選答案（最後一個是「等等再來」）
+    const n = quiz.obj.quiz.options.length + 1
     if (dir === 'up') quiz.selected = (quiz.selected + n - 1) % n
     if (dir === 'down') quiz.selected = (quiz.selected + 1) % n
     return
@@ -458,6 +489,8 @@ function onCanvasTap(e) {
   const rect = canvas.value.getBoundingClientRect()
   const sx = ((e.clientX - rect.left) / rect.width) * VIEW_W
   const sy = ((e.clientY - rect.top) / rect.height) * VIEW_H
+  const ib = itemBoxes.find((b) => sx >= b.x && sx <= b.x + b.w && sy >= b.y && sy <= b.y + b.h)
+  if (ib) return tapItem(ib.id)
   const hit = magnifierBoxes.find((b) => sx >= b.x - 6 && sx <= b.x + 19 && sy >= b.y - 6 && sy <= b.y + 19)
   if (hit) inspect(hit.actor)
 }
@@ -500,6 +533,42 @@ function updatePartner(dt) {
   } else if (!busy()) {
     partner.facing = player.x >= partner.x ? 'right' : 'left' // 停下來時看著她
   }
+}
+
+// ---------- 音樂：物件設定 music（public/ 底下的音檔路徑），靠近就聽得到，越近越大聲 ----------
+//   答題選錯的歌（quiz.optionSongs）會暫時換成那首歌
+const musicActors = actors.filter((a) => a.music)
+const audios = new Map()
+let songOverride = null // { actor, audio }
+function audioFor(src) {
+  if (!audios.has(src)) {
+    const au = new Audio(src)
+    au.loop = true
+    au.volume = 0
+    au.addEventListener('error', () => {}) // 音檔還沒放的話就安靜不出聲
+    audios.set(src, au)
+  }
+  return audios.get(src)
+}
+function playSongOverride(src) {
+  stopSongOverride()
+  const actor = quiz.obj || talkingTo
+  songOverride = { actor, src }
+}
+function stopSongOverride() { songOverride = null }
+function updateMusic() {
+  musicActors.forEach((a) => {
+    const d = Math.abs(centerX(a) - centerX(player))
+    const vol = Math.max(0, 1 - d / (6 * TILE)) * 0.8
+    const src = songOverride?.actor === a ? songOverride.src : a.music
+    ;[a.music, ...(a.quiz?.optionSongs || [])].forEach((k) => { // 同一個人只會同時彈一首
+      if (k && k !== src && audios.has(k) && !audios.get(k).paused) audios.get(k).pause()
+    })
+    const au = audioFor(src)
+    au.volume = vol
+    if (vol > 0 && au.paused) au.play().catch(() => {})
+    if (vol === 0 && !au.paused) au.pause()
+  })
 }
 
 // ---------- 更新 ----------
@@ -712,7 +781,8 @@ function render() {
   fireworks.draw(ctx)
   ctx.restore()
 
-  // 右上角的道具欄（最終章等煙火、放煙火時先藏起來）
+  // 右上角的道具欄（最終章等煙火、放煙火時先藏起來）；點道具可以選起來
+  itemBoxes.length = 0
   if (fin.phase !== 'none') return
   let iy = 6
   itemIds.value.forEach((id) => {
@@ -721,11 +791,30 @@ function render() {
     const s = img.height > 20 ? 0.5 : 1 // 大的道具縮小一半
     const w = Math.round(img.width * s), h = Math.round(img.height * s)
     const x = VIEW_W - w - 6
-    ctx.fillStyle = 'rgba(20,26,51,0.75)'
+    const on = selectedItem.value === id
+    ctx.fillStyle = on ? 'rgba(255, 209, 102, 0.9)' : 'rgba(20,26,51,0.75)'
     ctx.fillRect(x - 3, iy - 3, w + 6, h + 6)
+    if (on) { ctx.fillStyle = 'rgba(20,26,51,0.85)'; ctx.fillRect(x - 1, iy - 1, w + 2, h + 2) }
     ctx.drawImage(img, x, iy, w, h)
+    itemBoxes.push({ id, x: x - 3, y: iy - 3, w: w + 6, h: h + 6 })
     iy += h + 8
   })
+}
+
+const itemBoxes = []
+const selectedItem = ref(null)
+// merges：[{ items: ['a', 'b'], lines, flashback, reward }]，把兩個道具放在一起就會觸發
+function tapItem(id) {
+  const first = selectedItem.value
+  if (!first || first === id) { selectedItem.value = first === id ? null : id; return }
+  const m = (scene.merges || []).find((mg) => mg.items.includes(first) && mg.items.includes(id))
+  if (!m) { selectedItem.value = id; return }
+  selectedItem.value = null
+  openDialog('', m.lines || [], () => playFlashback(m.flashback, () => {
+    m.items.forEach(removeItem)
+    addItem(m.reward.id)
+    showItem(m.reward)
+  }))
 }
 
 function loop(t) {
@@ -733,6 +822,7 @@ function loop(t) {
   last = t
   clock += dt
   updatePlayer(dt)
+  if (musicActors.length) updateMusic()
   if (scene.partner !== false) updatePartner(dt)
   actors.forEach((a) => { if (a.walk) updateWalker(a, dt) })
   updateFinale(dt)
@@ -766,6 +856,7 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   cancelAnimationFrame(raf)
+  audios.forEach((au) => au.pause())
   clearInterval(typeTimer)
   window.removeEventListener('keydown', onKeyDown)
   window.removeEventListener('keyup', onKeyUp)
@@ -798,6 +889,13 @@ onBeforeUnmount(() => {
         >
           {{ opt }}
         </button>
+        <button
+          class="option later"
+          :class="{ on: quiz.selected === quiz.obj.quiz.options.length }"
+          @pointerdown.prevent="quiz.selected = quiz.obj.quiz.options.length; choose(quiz.selected)"
+        >
+          等等再來
+        </button>
       </div>
 
       <!-- 抽籤 -->
@@ -814,13 +912,13 @@ onBeforeUnmount(() => {
       <!-- 回憶畫面 -->
       <FlashbackView v-if="flash.open" ref="flashRef" :flashback="flash.data" @done="onFlashbackDone" />
 
-      <!-- 要前往下一個地方嗎？ -->
+      <!-- 選擇框（要前往下一個地方嗎？／要不要也畫一張？） -->
       <div v-if="choice.open" class="choice">
-        <p class="choice-q">要前往下一個地方嗎？</p>
-        <p v-if="nextTitle" class="choice-next">下一站：{{ nextTitle }}</p>
+        <p class="choice-q">{{ choice.question }}</p>
+        <p v-if="choice.sub" class="choice-next">{{ choice.sub }}</p>
         <div class="choice-opts">
           <button
-            v-for="(opt, i) in choiceOptions"
+            v-for="(opt, i) in choice.options"
             :key="opt"
             class="choice-opt"
             :class="{ on: choice.selected === i }"
@@ -908,6 +1006,8 @@ onBeforeUnmount(() => {
   background: #fff; color: #1b2140; border: 3px solid #1b2140;
 }
 .option.on { background: #1b2140; color: #f3efe8; }
+.option.later { margin-top: auto; text-align: center; font-size: 14px; background: #e8e2d6; }
+.option.later.on { background: #6a6e84; color: #f3efe8; }
 .option.on::before { content: '▶ '; }
 
 /* 要前往下一個地方嗎？（像寶可夢的是／否選單） */
