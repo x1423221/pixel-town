@@ -49,7 +49,6 @@ export default {
         answer: 0,
         hints: [
           '嗯……好像不是這個喔。',
-          '那位客人說，可以去 LINE 搜尋看看！（提示待填）',
         ],
         successLines: [
           '答對了！',
