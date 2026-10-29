@@ -45,10 +45,10 @@ export default {
       ],
       quiz: {
         question: '他在彈的是哪一首歌？',
-        options: ['正確的歌名（待填）', '其他歌名（待填）', '其他歌名（待填）'],
-        answer: 0,
+        options: ['溫柔的彗星（YOASOBI）', '因為愛（韋禮安）'],
+        answer: 1,
         // 選錯的話，他會改彈妳選的那首（音檔跟 options 一一對應；正確答案那格可以留空）
-        optionSongs: [null, 'songs/other-1.mp3', 'songs/other-2.mp3'],
+        optionSongs: ['songs/other-1.mp3', null],
         wrongSongLines: ['（他笑了笑，換彈了妳選的那首）', '……聽起來，好像不是剛剛那首？'],
         hints: [
           '嗯……不是這首喔。',
