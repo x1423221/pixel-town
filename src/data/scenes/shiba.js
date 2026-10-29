@@ -62,7 +62,6 @@ export default {
           id: 'tickets',
           name: '展望台門票',
           note: '一張給妳，一張給我。\n\n（他留的話：待填）',
-          fragment: { n: 3, of: 4, text: '一起看過的每一片風景——' },
         },
       },
       afterLines: ['拿著門票，去鐵塔上看看吧。'],
@@ -75,7 +74,7 @@ export default {
     },
     {
       id: 'mom', sprite: 'npc', colors: { hair: '#6a3a2a', coat: '#d98aa0' }, x: 7, lane: 2, walk: { from: 3, to: 12 },
-      name: '帶小孩的媽媽', lines: ['小朋友一直撿銀杏葉，口袋都塞滿了。'],
+      name: '帶小孩的媽媽', lines: ['小朋友一直撿銀杏葉，口袋都塞滿了。', '明天要帶他們去海邊的樂園，晚上還有煙火可以看呢！'],
     },
     {
       id: 'staff', sprite: 'npc', colors: { hair: '#2a2a3a', coat: '#e8582a', cap: '#e8582a' }, x: 20, lane: 1,

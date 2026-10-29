@@ -35,7 +35,7 @@ export default {
         '到處逛逛吧！',
       ],
     },
-    { name: '他', lines: ['走吧，我們一起逛逛！'] },
+    { name: '他', lines: ['走吧，先去看看有什麼好吃的！'] },
   ],
 
   // 三種人／物件：
@@ -168,8 +168,6 @@ export default {
           id: 'milk-candy',
           name: '牛奶糖',
           note: '這次不用捨不得了，吃一顆吧。\n以後想吃，我都買給妳。',
-          // 回憶碎片：四片拼起來是一句話（在 sea.js 最後一幕會拼起來）
-          fragment: { n: 1, of: 4, text: '那盒妳捨不得吃的牛奶糖、' },
         },
       },
       // 答對之後再跟她說話
@@ -205,7 +203,6 @@ export default {
           '收攤囉！',
         ],
       },
-      setFlag: 'heardDirection',
     },
     {
       id: 'staff',
@@ -239,7 +236,8 @@ export default {
       colors: { hair: '#c8c8d0', coat: '#7a5a3a' },
       x: 4, lane: 4,
       name: '老奶奶',
-      lines: ['我年輕的時候就常來這裡買東西了。', '以前過年前，整條街擠得連路都走不動呢。'],
+      lines: ['我年輕的時候就常來這裡買東西了。', '買完東西，我等一下要去小網神社拜拜。', '那間神社被大樓包圍著，小小的，可是很靈驗喔。'],
+      setFlag: 'heardDirection', // 聽到小網神社，才能從上野站出發
     },
 
     // ---- 其他攤位的老闆（不能對話，只是站在攤位裡） ----
@@ -277,6 +275,6 @@ export default {
     x: 28.3, // 上野站門口
     requireFlag: 'heardDirection',
     lockedLines: ['車站前好多人……', '下一站要去哪裡呢？先問問市場裡的人吧。'],
-    doneLines: ['被大樓包圍的小神社……', '應該就是小網神社了！出發！'],
+    doneLines: ['奶奶說的小網神社……', '搭電車去看看吧！'],
   },
 }
