@@ -13,6 +13,7 @@ import { ROWS, LANES, laneY } from '../sprites/stage.js'
 import { THEMES } from '../sprites/themes/index.js'
 import { createFireworks } from '../sprites/fireworks.js'
 import { light, updateLight } from '../sprites/daylight.js'
+import { isPresent, linesFor } from '../sprites/shopHours.js'
 import { now, isSeen, markSeen, hasFlag, setFlag, clearFlag, hasItem, addItem, itemIds, msUntil, drawCount, addDraw, fortune, setFortune, endingIds } from '../composables/useProgress.js'
 
 const props = defineProps({ scene: { type: Object, required: true } })
@@ -64,7 +65,8 @@ const actors = scene.objects.map((o) => ({
   pause: rand(0, 2000),
   targetX: o.x * TILE,
 }))
-const talkable = (a) => !!a.lines
+const present = (a) => isPresent(scene, a) // 依營業時間：收攤後店員不在、街上人變少
+const talkable = (a) => !!a.lines && present(a)
 
 function inReach(a) {
   const dx = Math.abs(centerX(a) - centerX(player))
@@ -129,11 +131,11 @@ function inspect(a) {
     if (a.omikuji && isSeen(key(`${a.id}:quiz`))) { // 題目答對了、但還沒抽到大吉
       return openDialog(a.name, a.omikuji.againLines, () => openOmikuji(a))
     }
-    return openDialog(a.name, a.lines, () => openQuiz(a))
+    return openDialog(a.name, linesFor(a), () => openQuiz(a))
   }
   markSeen(key(a.id))
   if (a.setFlag) setFlag(a.setFlag)
-  openDialog(a.name, a.lines)
+  openDialog(a.name, linesFor(a))
 }
 
 function tryExit() {
@@ -552,14 +554,14 @@ function render() {
   theme.extras(ctx, scene, clock, worldW)
 
   // 攤位裡的人：站在櫃檯後面
-  actors.filter((a) => a.inStall).forEach((a) => {
+  actors.filter((a) => a.inStall && present(a)).forEach((a) => {
     drawSprite(ctx, objectCanvas(a, 0), Math.round(a.x), theme.stallFeet - SPRITE_H, false)
   })
 
   for (let tx = x0; tx < x1; tx++) theme.front(ctx, tx, scene)
 
   // 街上的人＋柱子：依前後排排序，靠鏡頭的蓋住後面的
-  const layer = actors.filter((a) => !a.inStall).map((a) => {
+  const layer = actors.filter((a) => !a.inStall && present(a)).map((a) => {
     const { img, flip } = poseOf(a)
     const feet = feetOf(a)
     return { feet, draw: () => drawSprite(ctx, img, Math.round(a.x), feet - SPRITE_H, flip) }

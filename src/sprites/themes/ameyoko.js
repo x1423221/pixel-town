@@ -4,6 +4,7 @@
 import { TILE, drawTile, px, hash, drawText, stallTable, drawTrain, TRAIN_LENGTH } from '../sceneArt.js'
 import { laneY, ground, gateGeom, pasteAlongBeam, offscreen, stars } from '../stage.js'
 import { light, mix, skyBands, nightAlpha, glow } from '../daylight.js'
+import { shutterLevel } from '../shopHours.js'
 
 const STALL_FEET = 7 * TILE - 9 // 攤位裡的人腳底（下半身被櫃檯擋住）
 
@@ -53,11 +54,13 @@ function lights(ctx, scene, clock, camX, viewW) {
   const x0 = Math.floor(camX / TILE), x1 = Math.min(scene.width, Math.ceil((camX + viewW) / TILE))
   for (let tx = x0; tx < x1; tx++) {
     const X = tx * TILE
+    if (shutterLevel(scene, tx) > 0) continue // 收攤的店不亮燈
     bulbString(ctx, X, 4 * TILE + 9, tx)
     if (scene.stalls[tx] && scene.stalls[tx] !== ',') bulbString(ctx, X, 6 * TILE, tx + 1)
   }
   ctx.globalAlpha = 1
   for (let tx = x0; tx < x1; tx++) {
+    if (shutterLevel(scene, tx) > 0) continue
     glow(ctx, tx * TILE + 12, 4 * TILE + 10, 16, '255, 230, 160', 0.7)
     if (scene.stalls[tx] && scene.stalls[tx] !== ',') glow(ctx, tx * TILE + 12, 6 * TILE + 2, 14, '255, 230, 160', 0.8)
   }
@@ -104,16 +107,33 @@ function back(ctx, tx) {
 function front(ctx, tx, scene) {
   const X = tx * TILE
   const ch = scene.stalls[tx]
+  const level = shutterLevel(scene, tx) // 鐵捲門拉下多少（0 全開、1 全關）
   if (ch && ch !== ',') {
-    const kind = { F: 'fruit', K: 'fish', C: 'candy' }[ch] ||
-      ['snack', 'dried', 'clothes', 'snack'][Math.floor(hash(tx, 18) * 4)]
-    stallTable(ctx, X, 6 * TILE, kind, tx, 6, false)
-    bulbString(ctx, X, 6 * TILE, tx + 1)
+    if (level < 1) {
+      const kind = { F: 'fruit', K: 'fish', C: 'candy' }[ch] ||
+        ['snack', 'dried', 'clothes', 'snack'][Math.floor(hash(tx, 18) * 4)]
+      stallTable(ctx, X, 6 * TILE, kind, tx, 6, false)
+      if (level === 0) bulbString(ctx, X, 6 * TILE, tx + 1)
+    }
   } else {
     px(ctx, X, 6 * TILE + 14, TILE, 10, '#5a4030')
     px(ctx, X, 6 * TILE + 14, TILE, 1, '#7a5a40')
   }
+  if (level > 0) shutter(ctx, X, level, ch && ch !== ',' ? 7 * TILE : 6 * TILE + 14)
   ground(ctx, tx, { base: '#7a7486', edge: '#5a5468', line: '#6a6478', curb: '#4a4458', curbHi: '#9a94a6' })
+}
+
+// 鐵捲門：從店的上緣往下拉，level 是拉下來的比例
+function shutter(ctx, X, level, bottom) {
+  const top = 4 * TILE + 12
+  const h = Math.round((bottom - top) * level)
+  if (h <= 0) return
+  px(ctx, X, top - 2, TILE, 3, '#5a5e66')          // 捲門盒
+  px(ctx, X, top, TILE, h, '#a4aab2')
+  for (let y = top + 1; y < top + h; y += 3) px(ctx, X, y, TILE, 1, '#868c96') // 橫紋
+  px(ctx, X, top, 1, h, '#6a7078'); px(ctx, X + TILE - 1, top, 1, h, '#6a7078')
+  px(ctx, X, top + h - 2, TILE, 2, '#5a5e66')      // 底下的把手條
+  px(ctx, X + 10, top + h - 4, 4, 2, '#3a3e46')
 }
 
 // 山手線＋上野站
