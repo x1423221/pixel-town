@@ -16,7 +16,11 @@ import { light, updateLight } from '../sprites/daylight.js'
 import { isPresent, linesFor } from '../sprites/shopHours.js'
 import { now, isSeen, markSeen, hasFlag, setFlag, clearFlag, hasItem, addItem, itemIds, msUntil, drawCount, addDraw, fortune, setFortune, endingIds } from '../composables/useProgress.js'
 
-const props = defineProps({ scene: { type: Object, required: true } })
+const props = defineProps({
+  scene: { type: Object, required: true },
+  nextTitle: { type: String, default: '' }, // 下一站的名字（問「要前往下一個地方嗎？」用）
+  irisIn: { type: Boolean, default: false }, // 從上一區過來：黑圈從主角身上打開
+})
 const emit = defineEmits(['title-tap', 'exit', 'finale-done', 'route-ending'])
 
 const VIEW_W = 8 * TILE
@@ -145,8 +149,53 @@ function tryExit() {
     return openDialog('', ex.lockedLines)
   }
   if (scene.finale) return arriveFinale()
-  openDialog('', ex.doneLines, () => emit('exit', scene.id))
+  if (exitDone) return askNext() // 已經看過出口的台詞：直接問要不要走
+  openDialog('', ex.doneLines, () => { exitDone = true; askNext() })
 }
+
+// ---------- 前往下一個地方：先問，確認後黑圈縮到主角身上（像寶可夢換場景） ----------
+let exitDone = false
+const choice = reactive({ open: false, selected: 0 })
+const choiceOptions = ['前往', '再逛逛']
+function askNext() {
+  held.length = 0
+  Object.assign(choice, { open: true, selected: 0 })
+}
+function pickChoice(i) {
+  choice.open = false
+  if (i === 0) return irisOut(() => emit('exit', scene.id))
+  player.x -= 14 // 再逛逛：往回走一點，免得一直跳出來
+  player.facing = 'left'
+}
+
+const iris = reactive({ active: false, k: 1, cx: 50, cy: 70, maxR: 600 })
+const irisStyle = computed(() => {
+  const r = Math.max(0, iris.k * iris.maxR)
+  return { background: `radial-gradient(circle at ${iris.cx}% ${iris.cy}%, transparent ${r}px, #000 ${r + 1}px)` }
+})
+function irisCenter() { // 主角在畫面上的位置（百分比）
+  iris.cx = ((player.x - camX + SPRITE_W / 2) / VIEW_W) * 100
+  iris.cy = ((laneY(player.lane) - 18) / VIEW_H) * 100
+  const rect = canvas.value?.getBoundingClientRect()
+  iris.maxR = rect ? Math.hypot(rect.width, rect.height) : 600
+}
+function animateIris(from, to, ms, done) {
+  irisCenter()
+  Object.assign(iris, { active: true, k: from })
+  const start = performance.now()
+  const step = (t) => {
+    const u = Math.min(1, (t - start) / ms)
+    iris.k = from + (to - from) * (1 - Math.pow(1 - u, 2))
+    if (u < 1) requestAnimationFrame(step)
+    else done?.()
+  }
+  requestAnimationFrame(step)
+}
+function irisOut(done) { // 黑圈縮小到主角身上，全黑停一下再換場景
+  held.length = 0
+  animateIris(1, 0, 900, () => setTimeout(done, 250))
+}
+
 
 // ---------- 回憶題 ----------
 const quiz = reactive({ open: false, obj: null, selected: 0, wrong: 0 })
@@ -214,7 +263,7 @@ function onOmikujiTake(f) {
   openDialog(obj.name, f.lines, () => {
     addItem(reward.id)
     // 重抽的話：收下籤之後直接趕去碼頭
-    showItem(reward, hasFlag('redraw') ? () => openDialog('', obj.omikuji.redrawLines, () => { clearFlag('redraw'); emit('exit', scene.id) }) : null)
+    showItem(reward, hasFlag('redraw') ? () => openDialog('', obj.omikuji.redrawLines, () => { clearFlag('redraw'); irisOut(() => emit('exit', scene.id)) }) : null)
   })
 }
 
@@ -347,11 +396,15 @@ function finishFinale() {
   if (fin.canFinish) emit('finale-done')
 }
 
-const busy = () => flash.open || dialog.open || quiz.open || itemPopup.open || omikuji.open || fin.phase !== 'none'
+const busy = () => iris.active || choice.open || flash.open || dialog.open || quiz.open || itemPopup.open || omikuji.open || fin.phase !== 'none'
 
 // ---------- 輸入 ----------
 const held = []
 function press(dir) {
+  if (choice.open) { // 要不要前往下一站：上下選
+    if (dir === 'up' || dir === 'down') choice.selected = 1 - choice.selected
+    return
+  }
   if (quiz.open) { // 出題中：上下選答案
     const n = quiz.obj.quiz.options.length
     if (dir === 'up') quiz.selected = (quiz.selected + n - 1) % n
@@ -368,6 +421,8 @@ function release(dir) {
   if (i >= 0) held.splice(i, 1)
 }
 function onA() {
+  if (iris.active) return
+  if (choice.open) return pickChoice(choice.selected)
   if (flash.open) return flashRef.value?.advance()
   if (itemPopup.open) return closeItem()
   if (quiz.open) return choose(quiz.selected)
@@ -639,10 +694,17 @@ onMounted(() => {
     player.lane = player.laneTarget = 2
     standAtViewpoint()
     fin.phase = 'waiting'
-  } else if (scene.intro && !isSeen(key('intro'))) {
-    openDialog(scene.introName || '', scene.intro, () => markSeen(key('intro')))
+  }
+  const intro = () => {
+    if (scene.intro && !isSeen(key('intro')) && fin.phase === 'none') {
+      openDialog(scene.introName || '', scene.intro, () => markSeen(key('intro')))
+    }
   }
   raf = requestAnimationFrame(loop)
+  if (props.irisIn) { // 從上一區過來：先全黑，黑圈打開之後才出現開場白
+    Object.assign(iris, { active: true, k: 0 })
+    requestAnimationFrame(() => animateIris(0, 1, 900, () => { iris.active = false; intro() }))
+  } else intro()
 })
 onBeforeUnmount(() => {
   cancelAnimationFrame(raf)
@@ -693,6 +755,24 @@ onBeforeUnmount(() => {
 
       <!-- 回憶畫面 -->
       <FlashbackView v-if="flash.open" ref="flashRef" :flashback="flash.data" @done="onFlashbackDone" />
+
+      <!-- 要前往下一個地方嗎？ -->
+      <div v-if="choice.open" class="choice">
+        <p class="choice-q">要前往下一個地方嗎？</p>
+        <p v-if="nextTitle" class="choice-next">下一站：{{ nextTitle }}</p>
+        <div class="choice-opts">
+          <button
+            v-for="(opt, i) in choiceOptions"
+            :key="opt"
+            class="choice-opt"
+            :class="{ on: choice.selected === i }"
+            @pointerdown.prevent="choice.selected = i; pickChoice(i)"
+          >{{ opt }}</button>
+        </div>
+      </div>
+
+      <!-- 換場景的黑圈 -->
+      <div v-if="iris.active" class="iris" :style="irisStyle" />
 
       <!-- 獲得道具 -->
       <div v-if="itemPopup.open" class="item-pop" @pointerdown.prevent="closeItem">
@@ -771,6 +851,22 @@ onBeforeUnmount(() => {
 }
 .option.on { background: #1b2140; color: #f3efe8; }
 .option.on::before { content: '▶ '; }
+
+/* 要前往下一個地方嗎？（像寶可夢的是／否選單） */
+.choice {
+  position: absolute; left: 6px; right: 6px; bottom: 6px; z-index: 6;
+  background: #f3efe8; color: #1b2140; border: 4px solid #1b2140; outline: 3px solid #f3efe8; padding: 10px 12px;
+}
+.choice-q { font-size: 16px; font-weight: 700; }
+.choice-next { font-size: 14px; color: #c23b4a; margin-top: 2px; }
+.choice-opts { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin-top: 6px; }
+.choice-opt {
+  font: inherit; font-size: 16px; min-width: 120px; text-align: left; padding: 6px 12px; cursor: pointer;
+  background: #fff; color: #1b2140; border: 3px solid #1b2140;
+}
+.choice-opt.on { background: #1b2140; color: #f3efe8; }
+.choice-opt.on::before { content: '▶ '; }
+.iris { position: absolute; inset: 0; z-index: 9; pointer-events: all; }
 
 .frag { font-size: 16px; color: #ffd166; letter-spacing: 1px; }
 .item-pop {

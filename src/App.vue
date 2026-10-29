@@ -21,7 +21,11 @@ const cardMode = computed(() => {
   return 'next'
 })
 
+const irisIn = ref(false) // 從上一區直接過來時，新的一區用黑圈打開
+const nextTitle = computed(() => ROUTE[routeIndex.value + 1]?.title || '')
+
 function depart() {
+  irisIn.value = false
   showCard.value = false
   sceneKey.value++
 }
@@ -63,12 +67,20 @@ function onSceneExit() {
   // 重抽完：直接跳到最終章的碼頭（不用再走一次芝公園、海洋）
   if (lastScene && routeIndex.value === shrineIndex && isSeen(`${lastScene.id}:waiting`)) {
     goToRoute(ROUTE.length - 1)
+    irisIn.value = true
     showCard.value = false
     sceneKey.value++
     return
   }
   if (routeIndex.value < ROUTE.length - 1) goToRoute(routeIndex.value + 1)
-  showCard.value = true
+  // 下一區已經開放：黑圈直接打開進到下一區；還沒到時間才回到轉場畫面看倒數
+  if (entry.value.scene && msUntilUnlock(entry.value) === 0) {
+    irisIn.value = true
+    showCard.value = false
+    sceneKey.value++
+  } else {
+    showCard.value = true
+  }
 }
 
 // ---------- 後門：連點標題 5 下打開管理面板 ----------
@@ -150,6 +162,8 @@ function fmtNow() {
       v-else
       :key="`${entry.id}-${sceneKey}`"
       :scene="entry.scene"
+      :next-title="nextTitle"
+      :iris-in="irisIn"
       @title-tap="onTitleTap"
       @exit="onSceneExit"
       @finale-done="onFinaleDone"
