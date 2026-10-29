@@ -22,12 +22,6 @@ export default {
     '找到第四片，就能知道寫信的人想說什麼了。',
   ],
 
-  partnerTalk: [
-    { when: { noItem: 'portrait' }, lines: ['那邊有畫似顏繪的畫家耶，要不要去畫一張？'] },
-    { when: { noFlag: 'seaClue' }, lines: ['晚上好像有什麼活動……問問看工作人員吧？'] },
-    { lines: ['碼頭最前端，好像是看煙火最好的位置喔。'] },
-  ],
-
   objects: [
     {
       id: 'cart', sprite: 'cart', x: 4.6, lane: 0,
@@ -113,7 +107,6 @@ export default {
           fragment: { n: 4, of: 4, text: '我都想陪妳，一直收藏下去。' },
         },
       },
-      partnerAfter: ['……還沒發生的回憶啊。', '（他小聲說：「我也很期待。」）'],
       afterLines: ['今晚有煙火喔，碼頭那邊視野最好。'],
     },
     {

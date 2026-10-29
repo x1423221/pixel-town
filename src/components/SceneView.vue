@@ -223,16 +223,10 @@ function choose(i) {
   if (obj.setFlag) setFlag(obj.setFlag)
   openDialog(obj.name, q.successLines, () => playFlashback(q.flashback, () => {
     if (q.reward && !hasItem(q.reward.id)) addItem(q.reward.id)
-    if (q.reward) showItem(q.reward, () => partnerSays(obj.partnerAfter))
+    if (q.reward) showItem(q.reward)
   }))
 }
 
-// 他在旁邊說話（裝傻、提示）；沒有台詞就直接跳過
-function partnerSays(lines, then) {
-  if (!lines?.length || !partnerOn()) return then?.()
-  partner.facing = partner.x < player.x ? 'right' : 'left'
-  openDialog(PARTNER_NAME, lines, then)
-}
 
 // ---------- 回憶畫面（閃回） ----------
 const flash = reactive({ open: false, data: null, then: null })
@@ -272,7 +266,7 @@ function onOmikujiTake(f) {
     // 重抽的話：收下籤之後直接趕去碼頭
     showItem(reward, hasFlag('redraw')
       ? () => openDialog('', obj.omikuji.redrawLines, () => { clearFlag('redraw'); irisOut(() => emit('exit', scene.id)) })
-      : () => partnerSays(obj.partnerAfter))
+      : null)
   })
 }
 
@@ -453,8 +447,7 @@ function onA() {
   if (fin.phase !== 'none') return
   if (atDoor()) return tryExit()
   const a = nearest()
-  if (a) return inspect(a)
-  if (partnerOn()) talkToPartner()
+  if (a) inspect(a)
 }
 
 const magnifierBoxes = []
@@ -466,9 +459,7 @@ function onCanvasTap(e) {
   const sx = ((e.clientX - rect.left) / rect.width) * VIEW_W
   const sy = ((e.clientY - rect.top) / rect.height) * VIEW_H
   const hit = magnifierBoxes.find((b) => sx >= b.x - 6 && sx <= b.x + 19 && sy >= b.y - 6 && sy <= b.y + 19)
-  if (hit) return inspect(hit.actor)
-  const b = partnerBox
-  if (partnerOn() && b && sx >= b.x && sx <= b.x + b.w && sy >= b.y && sy <= b.y + b.h) talkToPartner()
+  if (hit) inspect(hit.actor)
 }
 
 const KEYMAP = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right' }
@@ -485,7 +476,6 @@ function onKeyUp(e) {
 const PARTNER_NAME = '他'
 const partner = reactive({ x: Math.max(0, player.x - 22), lane: player.lane, facing: player.facing, moving: false, step: 0, stepClock: 0 })
 const trail = [{ x: player.x, lane: player.lane }]
-let partnerBox = null
 const partnerOn = () => scene.partner !== false && fin.phase === 'none'
 const GAP = 22 // 他跟她之間保持的距離（像素）
 function updatePartner(dt) {
@@ -510,16 +500,6 @@ function updatePartner(dt) {
   } else if (!busy()) {
     partner.facing = player.x >= partner.x ? 'right' : 'left' // 停下來時看著她
   }
-}
-
-// 跟他說話：依進度給不同的話（第一個符合條件的）
-//   partnerTalk: [{ when: { noItem, item, noFlag, flag }, lines: [...] }, ...]
-function talkToPartner() {
-  const list = scene.partnerTalk || []
-  const ok = (w = {}) => (!w.noItem || !hasItem(w.noItem)) && (!w.item || hasItem(w.item)) &&
-    (!w.noFlag || !hasFlag(w.noFlag)) && (!w.flag || hasFlag(w.flag))
-  const pick = list.find((t) => ok(t.when))
-  if (pick) partnerSays(pick.lines)
 }
 
 // ---------- 更新 ----------
@@ -699,7 +679,6 @@ function render() {
     const pf = Math.round(laneY(partner.lane))
     const img = boyCanvas(partner.moving ? 'side-walk' : 'side-idle', partner.moving ? partner.step : Math.floor(clock / 550) % 2)
     layer.push({ feet: pf + 0.45, draw: () => drawSprite(ctx, img, Math.round(partner.x), pf - SPRITE_H, partner.facing === 'left') })
-    partnerBox = { x: partner.x - camX, y: pf - SPRITE_H, w: SPRITE_W, h: SPRITE_H }
   }
   obstacles.forEach((p) => layer.push({ feet: p.foot - 1, draw: () => p.draw(ctx) }))
   layer.sort((a, b) => a.feet - b.feet)

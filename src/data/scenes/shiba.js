@@ -21,11 +21,6 @@ export default {
     '第三片回憶碎片，就在這座公園裡。',
   ],
 
-  partnerTalk: [
-    { when: { noFlag: 'shibaClue' }, lines: ['那個彈吉他的街頭藝人……旋律好熟悉喔？', '去聽聽看吧。'] },
-    { lines: ['有門票了！去鐵塔上看夜景吧。'] },
-  ],
-
   objects: [
     { id: 'sign', sprite: 'sign', x: 0.8, lane: 0, name: '看板', lines: ['芝公園　→ 往鐵塔'] },
     {
@@ -70,7 +65,6 @@ export default {
           fragment: { n: 3, of: 4, text: '一起看過的每一片風景——' },
         },
       },
-      partnerAfter: ['……這首歌，我好像也會彈一點點耶。', '（他假裝在看別的地方）'],
       afterLines: ['拿著門票，去鐵塔上看看吧。'],
       setFlag: 'shibaClue',
     },
