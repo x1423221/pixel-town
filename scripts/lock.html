@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
 <title>像素小遊戲</title>
-<style>
+<style id="lock-style">
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; }
   body {
@@ -66,7 +66,7 @@ async function unlock(password) {
 
 async function start(game) {
   document.getElementById('lock').remove()
-  document.body.removeAttribute('style')
+  document.getElementById('lock-style').remove() // 密碼畫面的樣式拿掉，才不會影響遊戲（例如把遊戲畫面壓扁）
   const style = document.createElement('style'); style.textContent = game.css; document.head.appendChild(style)
   if (game.title) document.title = game.title
   const app = document.createElement('div'); app.id = 'app'; document.body.appendChild(app)

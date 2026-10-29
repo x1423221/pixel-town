@@ -25,6 +25,7 @@ const irisIn = ref(false) // 從上一區直接過來時，新的一區用黑圈
 const nextTitle = computed(() => ROUTE[routeIndex.value + 1]?.title || '')
 
 function depart() {
+  showAdmin.value = false // 出發進遊戲時，管理面板自動收起來（要再打開：連點標題 5 下）
   irisIn.value = false
   showCard.value = false
   sceneKey.value++
@@ -171,7 +172,10 @@ function fmtNow() {
     />
 
     <aside v-if="showAdmin" class="admin">
-      <p>管理面板・{{ fmtNow() }}</p>
+      <div class="admin-head">
+        <p>管理面板・{{ fmtNow() }}</p>
+        <button class="admin-close" @click="showAdmin = false">✕ 收起</button>
+      </div>
       <div class="row">
         <button v-for="(r, i) in ROUTE" :key="r.id" :class="{ on: i === routeIndex }" @click="jumpTo(i)">
           跳到{{ r.title }}
@@ -200,7 +204,13 @@ function fmtNow() {
 .confirm-row button { font: inherit; font-size: 15px; padding: 8px 16px; cursor: pointer; border: 3px solid #1b2140; }
 .confirm-no { background: #f3efe8; color: #1b2140; }
 .confirm-yes { background: #c23b4a; color: #f3efe8; border-color: #8e1a2a !important; }
-.admin { margin-top: 24px; padding: 12px; border: 2px dashed #ff6f91; font-size: 13px; display: grid; gap: 8px; }
+/* 管理面板：浮在畫面最下面，不會把遊戲畫面擠扁 */
+.admin {
+  position: fixed; left: 50%; bottom: 0; transform: translateX(-50%); z-index: 40;
+  width: min(480px, 100%); max-height: 60vh; overflow-y: auto;
+  padding: 12px; background: rgba(27, 33, 64, 0.97); border: 2px dashed #ff6f91; font-size: 13px; display: grid; gap: 8px;
+}
+.admin-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .row { display: flex; flex-wrap: wrap; gap: 6px; }
 .admin button { font: inherit; padding: 6px 8px; background: transparent; color: inherit; border: 1px solid currentColor; cursor: pointer; }
 .admin button.on { background: #f3efe8; color: #1b2140; }
