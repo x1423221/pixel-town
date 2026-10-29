@@ -223,8 +223,15 @@ function choose(i) {
   if (obj.setFlag) setFlag(obj.setFlag)
   openDialog(obj.name, q.successLines, () => playFlashback(q.flashback, () => {
     if (q.reward && !hasItem(q.reward.id)) addItem(q.reward.id)
-    if (q.reward) showItem(q.reward)
+    if (q.reward) showItem(q.reward, () => partnerSays(obj.partnerAfter))
   }))
+}
+
+// 他在旁邊說話（裝傻、提示）；沒有台詞就直接跳過
+function partnerSays(lines, then) {
+  if (!lines?.length || !partnerOn()) return then?.()
+  partner.facing = partner.x < player.x ? 'right' : 'left'
+  openDialog(PARTNER_NAME, lines, then)
 }
 
 // ---------- 回憶畫面（閃回） ----------
@@ -263,7 +270,9 @@ function onOmikujiTake(f) {
   openDialog(obj.name, f.lines, () => {
     addItem(reward.id)
     // 重抽的話：收下籤之後直接趕去碼頭
-    showItem(reward, hasFlag('redraw') ? () => openDialog('', obj.omikuji.redrawLines, () => { clearFlag('redraw'); irisOut(() => emit('exit', scene.id)) }) : null)
+    showItem(reward, hasFlag('redraw')
+      ? () => openDialog('', obj.omikuji.redrawLines, () => { clearFlag('redraw'); irisOut(() => emit('exit', scene.id)) })
+      : () => partnerSays(obj.partnerAfter))
   })
 }
 
@@ -309,7 +318,7 @@ const waitText = computed(() => {
   const hms = [Math.floor((s % 86400) / 3600), Math.floor((s % 3600) / 60), s % 60].map((n) => String(n).padStart(2, '0')).join(':')
   return d > 0 ? `${d} 天 ${hms}` : hms
 })
-const boyHere = () => !['none'].includes(fin.phase) && (V.entrance === 'waiting' || ['walk', 'talk', 'linger', 'ended', 'kneel', 'question', 'yes'].includes(fin.phase))
+const boyHere = () => !['none'].includes(fin.phase) && (V.entrance === 'waiting' || ['arrive', 'leave', 'walk', 'talk', 'linger', 'ended', 'kneel', 'question', 'yes'].includes(fin.phase))
 
 function standAtViewpoint() {
   player.x = doorX - SPRITE_W / 2 - 18
@@ -319,11 +328,18 @@ function standAtViewpoint() {
 
 function arriveFinale() {
   standAtViewpoint()
+  fin.boyX = player.x - 26 // 一路跟過來的他，站到她旁邊
   fin.phase = 'arrive'
   openDialog('', V.arriveLines, () => {
-    markSeen(key('waiting'))
-    fin.phase = 'waiting'
+    if (V.entrance === 'waiting' || !V.leaveLines) return startWaiting()
+    player.facing = 'left'
+    openDialog(PARTNER_NAME, V.leaveLines, () => Object.assign(fin, { phase: 'leave', t: 0 }))
   })
+}
+function startWaiting() {
+  markSeen(key('waiting'))
+  player.facing = 'right'
+  fin.phase = 'waiting'
 }
 
 function startShow() { // 時間到：煙火（或延後／取消的廣播）
@@ -351,6 +367,12 @@ function updateFinale(dt) {
   fireworks.update(dt, fireworksOn)
   if (fin.phase === 'none' || fin.phase === 'arrive') return
   fin.t += dt
+  if (fin.phase === 'leave') { // 他往左走出畫面
+    fin.boyX -= 40 * (dt / 1000)
+    animateStep(fin, dt, 180)
+    if (fin.boyX < camX - 30) startWaiting()
+    return
+  }
   if (fin.phase === 'waiting' && waitMs.value === 0) {
     startShow()
   } else if (fin.phase === 'show' && fin.t > (V.fireworks === 'on' ? 2800 : 900) && !fin.said) {
@@ -431,7 +453,8 @@ function onA() {
   if (fin.phase !== 'none') return
   if (atDoor()) return tryExit()
   const a = nearest()
-  if (a) inspect(a)
+  if (a) return inspect(a)
+  if (partnerOn()) talkToPartner()
 }
 
 const magnifierBoxes = []
@@ -443,7 +466,9 @@ function onCanvasTap(e) {
   const sx = ((e.clientX - rect.left) / rect.width) * VIEW_W
   const sy = ((e.clientY - rect.top) / rect.height) * VIEW_H
   const hit = magnifierBoxes.find((b) => sx >= b.x - 6 && sx <= b.x + 19 && sy >= b.y - 6 && sy <= b.y + 19)
-  if (hit) inspect(hit.actor)
+  if (hit) return inspect(hit.actor)
+  const b = partnerBox
+  if (partnerOn() && b && sx >= b.x && sx <= b.x + b.w && sy >= b.y && sy <= b.y + b.h) talkToPartner()
 }
 
 const KEYMAP = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right' }
@@ -453,6 +478,48 @@ function onKeyDown(e) {
 }
 function onKeyUp(e) {
   if (KEYMAP[e.key]) release(KEYMAP[e.key])
+}
+
+// ---------- 一起走的他（像寶可夢的同行夥伴，跟在她後面） ----------
+//   場景設定 partner: false 就不會出現；最終章到碼頭時他會先離開（finale.leaveLines）
+const PARTNER_NAME = '他'
+const partner = reactive({ x: Math.max(0, player.x - 22), lane: player.lane, facing: player.facing, moving: false, step: 0, stepClock: 0 })
+const trail = [{ x: player.x, lane: player.lane }]
+let partnerBox = null
+const partnerOn = () => scene.partner !== false && fin.phase === 'none'
+const GAP = 22 // 他跟她之間保持的距離（像素）
+function updatePartner(dt) {
+  const last = trail[0]
+  if (Math.abs(player.x - last.x) + Math.abs(player.lane - last.lane) * 18 > 0.5) trail.unshift({ x: player.x, lane: player.lane })
+  if (trail.length > 300) trail.length = 300
+  // 沿著她走過的路往回量 GAP 的距離，就是他該站的位置
+  let dist = 0, target = trail[trail.length - 1]
+  for (let i = 1; i < trail.length; i++) {
+    dist += Math.abs(trail[i].x - trail[i - 1].x) + Math.abs(trail[i].lane - trail[i - 1].lane) * 18
+    if (dist >= GAP) { target = trail[i]; break }
+  }
+  if (dist < GAP && trail.length < 2) target = { x: player.x - GAP * (player.facing === 'left' ? -1 : 1), lane: player.lane }
+  const dx = target.x - partner.x
+  const moved = Math.abs(dx) > 0.5 || Math.abs(target.lane - partner.lane) > 0.02
+  partner.x = approach(partner.x, target.x, (WALK_SPEED + 20) * (dt / 1000))
+  partner.lane = approach(partner.lane, target.lane, (LANE_SPEED + 1) * (dt / 1000))
+  partner.moving = moved
+  if (moved) {
+    if (Math.abs(dx) > 0.5) partner.facing = dx > 0 ? 'right' : 'left'
+    animateStep(partner, dt, 150)
+  } else if (!busy()) {
+    partner.facing = player.x >= partner.x ? 'right' : 'left' // 停下來時看著她
+  }
+}
+
+// 跟他說話：依進度給不同的話（第一個符合條件的）
+//   partnerTalk: [{ when: { noItem, item, noFlag, flag }, lines: [...] }, ...]
+function talkToPartner() {
+  const list = scene.partnerTalk || []
+  const ok = (w = {}) => (!w.noItem || !hasItem(w.noItem)) && (!w.item || hasItem(w.item)) &&
+    (!w.noFlag || !hasFlag(w.noFlag)) && (!w.flag || hasFlag(w.flag))
+  const pick = list.find((t) => ok(t.when))
+  if (pick) partnerSays(pick.lines)
 }
 
 // ---------- 更新 ----------
@@ -563,7 +630,7 @@ function playerSprite() {
 }
 function boySprite() {
   const idle = Math.floor(clock / 550) % 2
-  if (fin.phase === 'walk') return boyCanvas('side-walk', fin.step || 0)
+  if (fin.phase === 'walk' || fin.phase === 'leave') return boyCanvas('side-walk', fin.step || 0)
   if (['arrive', 'waiting', 'show', 'talk', 'linger', 'ended'].includes(fin.phase)) return boyCanvas('side-idle', idle)
   return boyCanvas('kneel', idle)
 }
@@ -626,7 +693,13 @@ function render() {
   layer.push({ feet: pFeet + 0.5, draw: () => drawSprite(ctx, me.img, Math.round(player.x), pFeet - SPRITE_H, me.flip) })
   if (boyHere()) {
     const img = boySprite()
-    layer.push({ feet: pFeet + 0.4, draw: () => { drawSprite(ctx, img, Math.round(fin.boyX), pFeet - SPRITE_H, false); drawProp(ctx, fin.boyX, pFeet) } })
+    const away = fin.phase === 'leave' // 走開的時候面向左邊
+    layer.push({ feet: pFeet + 0.4, draw: () => { drawSprite(ctx, img, Math.round(fin.boyX), pFeet - SPRITE_H, away); drawProp(ctx, fin.boyX, pFeet) } })
+  } else if (partnerOn()) {
+    const pf = Math.round(laneY(partner.lane))
+    const img = boyCanvas(partner.moving ? 'side-walk' : 'side-idle', partner.moving ? partner.step : Math.floor(clock / 550) % 2)
+    layer.push({ feet: pf + 0.45, draw: () => drawSprite(ctx, img, Math.round(partner.x), pf - SPRITE_H, partner.facing === 'left') })
+    partnerBox = { x: partner.x - camX, y: pf - SPRITE_H, w: SPRITE_W, h: SPRITE_H }
   }
   obstacles.forEach((p) => layer.push({ feet: p.foot - 1, draw: () => p.draw(ctx) }))
   layer.sort((a, b) => a.feet - b.feet)
@@ -681,6 +754,7 @@ function loop(t) {
   last = t
   clock += dt
   updatePlayer(dt)
+  if (scene.partner !== false) updatePartner(dt)
   actors.forEach((a) => { if (a.walk) updateWalker(a, dt) })
   updateFinale(dt)
   render()
@@ -696,9 +770,14 @@ onMounted(() => {
     fin.phase = 'waiting'
   }
   const intro = () => {
-    if (scene.intro && !isSeen(key('intro')) && fin.phase === 'none') {
-      openDialog(scene.introName || '', scene.intro, () => markSeen(key('intro')))
+    if (isSeen(key('intro')) || fin.phase !== 'none') return
+    // introParts：好幾段、不同人說的開場（例如他說話 → 信 → 他說話）；intro：一段
+    const parts = scene.introParts || (scene.intro ? [{ name: scene.introName || '', lines: scene.intro }] : [])
+    const play = (i) => {
+      if (i >= parts.length) return markSeen(key('intro'))
+      openDialog(parts[i].name || '', parts[i].lines, () => play(i + 1))
     }
+    play(0)
   }
   raf = requestAnimationFrame(loop)
   if (props.irisIn) { // 從上一區過來：先全黑，黑圈打開之後才出現開場白
