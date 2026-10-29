@@ -1,0 +1,45 @@
+# 推到 main 之後自動打包、加密、發布到 GitHub Pages
+# 密碼放在 GitHub 的 Secret 裡（Settings → Secrets and variables → Actions → New repository secret，名字 GAME_PASSWORD）
+# Pages 的來源要選「GitHub Actions」（Settings → Pages → Source）
+name: 發布遊戲
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: 打包並加密
+        run: |
+          if [ -z "$GAME_PASSWORD" ]; then echo "沒有設定 GAME_PASSWORD，停止發布（不能發布沒加密的版本）"; exit 1; fi
+          npm run build
+          test -f dist/game.enc
+        env:
+          GAME_PASSWORD: ${{ secrets.GAME_PASSWORD }}
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - id: deployment
+        uses: actions/deploy-pages@v4
